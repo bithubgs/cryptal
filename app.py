@@ -415,55 +415,15 @@ def main():
     # Sidebar
     st.sidebar.title("⚙️ Configuration")
     
-# Crypto selection
+    # Crypto selection
     crypto_symbols = {
-    'Bitcoin': 'bitcoin',
-    'Ethereum': 'ethereum',
-    'Tether': 'tether', # USDT
-    'BNB': 'binancecoin',
-    'Solana': 'solana',
-    'XRP': 'ripple',
-    'Dogecoin': 'dogecoin',
-    'Cardano': 'cardano',
-    'Shiba Inu': 'shiba-inu',
-    'Avalanche': 'avalanche-2',
-    'Polkadot': 'polkadot',
-    'Tron': 'tron',
-    'Polygon': 'matic-network', # MATIC
-    'Chainlink': 'chainlink', # LINK
-    'Litecoin': 'litecoin', # LTC
-    'Cosmos': 'cosmos', # ATOM
-    'Ethereum Classic': 'ethereum-classic', # ETC
-    'Monero': 'monero', # XMR
-    'NEAR Protocol': 'near', # NEAR
-    'Algorand': 'algorand', # ALGO
-    'Decentraland': 'decentraland', # MANA
-    'The Sandbox': 'the-sandbox', # SAND
-    'Axie Infinity': 'axie-infinity', # AXS
-    'ImmutableX': 'immutable-x', # IMX
-    'Render Token': 'render-token', # RNDR
-    'Pepe': 'pepe', # PEPE
-    'Floki': 'floki', # FLOKI
-    'Injective Protocol': 'injective-protocol', # INJ
-    'Sui': 'sui', # SUI
-    'Arbitrum': 'arbitrum', # ARB
-    'Optimism': 'optimism', # OP
-    'Aptos': 'aptos', # APT
-    'Hedera': 'hedera-hashgraph', # HBAR
-    'Filecoin': 'filecoin', # FIL
-    'The Graph': 'the-graph', # GRT
-    'Aave': 'aave', # AAVE
-    'Uniswap': 'uniswap', # UNI
-    'Maker': 'maker', # MKR
-    'Compound': 'compound-governance-token', # COMP
-    'Fantom': 'fantom', # FTM
-    'Cronos': 'cronos', # CRO
-    'VeChain': 'vechain', # VET
-    'EOS': 'eos', # EOS
-    'IOTA': 'iota', # IOTA
-    'Kusama': 'kusama', # KSM
-    'Conflux': 'conflux-token', # CFX
-    'Gala': 'gala' # GALA
+        'Bitcoin': 'bitcoin',
+        'Ethereum': 'ethereum', 
+        'Sandbox': 'the-sandbox',
+        'Cardano': 'cardano',
+        'Polygon': 'matic-network',
+        'Chainlink': 'chainlink',
+        'Solana': 'solana'
     }
     
     selected_crypto = st.sidebar.selectbox("Select Cryptocurrency", list(crypto_symbols.keys()))
