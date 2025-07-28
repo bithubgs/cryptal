@@ -235,35 +235,19 @@ class CryptoAnalyzer:
         """Generate price predictions"""
         try:
             if model_type == 'Linear Regression':
-                # Clean data for Linear Regression
-                # Drop rows where any of the feature columns or target column have NaN values
-                # This is crucial because TA indicators introduce NaNs at the beginning of the series
-                required_cols = ['MA7', 'MA25', 'RSI', 'MACD', 'volume', target]
-                df_clean = df.dropna(subset=required_cols)
-                
-                if df_clean.empty:
-                    st.error("Not enough data after cleaning for Linear Regression. Try selecting a longer timeframe.")
-                    return None
-                    
-                X = df_clean[['MA7', 'MA25', 'RSI', 'MACD', 'volume']].values
-                y = df_clean[target].values
+                # Prepare features
+                df_features = df[['MA7', 'MA25', 'RSI', 'MACD', 'volume']].fillna(method='ffill')
+                X = df_features.values
+                y = df[target].values
                 
                 # Train model
                 model = LinearRegression()
                 train_size = int(0.8 * len(X))
-                
-                if train_size == 0 or train_size >= len(X):
-                    st.error("Not enough data to train Linear Regression model after splitting. Increase data duration or change model.")
-                    return None
-                    
                 X_train, y_train = X[:train_size], y[:train_size]
                 model.fit(X_train, y_train)
                 
                 # Predict future
-                # Ensure last_features also doesn't contain NaN by taking from df_clean
-                last_features_df = df_clean[['MA7', 'MA25', 'RSI', 'MACD', 'volume']].iloc[-1:].copy()
-                last_features = last_features_df.values.repeat(forecast_days, axis=0)
-                
+                last_features = X[-1:].repeat(forecast_days, axis=0)
                 predictions = model.predict(last_features)
                 
             elif model_type == 'LSTM':
@@ -295,13 +279,8 @@ class CryptoAnalyzer:
                     st.error("Statsmodels is required for ARIMA model. Please install it with: pip install statsmodels")
                     return None
                     
-                # ARIMA model needs a series without NaNs
-                series_for_arima = df[target].dropna()
-                if series_for_arima.empty:
-                    st.error("Not enough data for ARIMA model after cleaning.")
-                    return None
-
-                model = ARIMA(series_for_arima, order=(5,1,0))
+                # ARIMA model
+                model = ARIMA(df[target].fillna(method='ffill'), order=(5,1,0))
                 fitted_model = model.fit()
                 predictions = fitted_model.forecast(steps=forecast_days)
                 
@@ -349,4 +328,230 @@ def create_chart(df, signals_df, prediction_df=None):
     ), row=1, col=1)
     
     # Moving Averages
-    fig.add_trace(go.Scatter(x=df.index, y=df['MA
+    fig.add_trace(go.Scatter(x=df.index, y=df['MA7'], name='MA7', line=dict(color='orange')), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['MA25'], name='MA25', line=dict(color='red')), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['MA99'], name='MA99', line=dict(color='purple')), row=1, col=1)
+    
+    # Bollinger Bands
+    fig.add_trace(go.Scatter(x=df.index, y=df['BB_upper'], name='BB Upper', line=dict(color='gray', dash='dash')), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['BB_lower'], name='BB Lower', line=dict(color='gray', dash='dash')), row=1, col=1)
+    
+    # Buy/Sell Signals
+    if not signals_df.empty:
+        buy_signals = signals_df[signals_df['signal'] == 'BUY']
+        sell_signals = signals_df[signals_df['signal'] == 'SELL']
+        
+        fig.add_trace(go.Scatter(
+            x=buy_signals['timestamp'],
+            y=buy_signals['price'],
+            mode='markers',
+            marker=dict(color='green', size=10, symbol='triangle-up'),
+            name='Buy Signal'
+        ), row=1, col=1)
+        
+        fig.add_trace(go.Scatter(
+            x=sell_signals['timestamp'],
+            y=sell_signals['price'],
+            mode='markers',
+            marker=dict(color='red', size=10, symbol='triangle-down'),
+            name='Sell Signal'
+        ), row=1, col=1)
+    
+    # Predictions
+    if prediction_df is not None:
+        fig.add_trace(go.Scatter(
+            x=prediction_df['date'],
+            y=prediction_df['predicted_price'],
+            name='Prediction',
+            line=dict(color='yellow', width=3)
+        ), row=1, col=1)
+        
+        # Confidence interval
+        fig.add_trace(go.Scatter(
+            x=prediction_df['date'],
+            y=prediction_df['upper_bound'],
+            fill=None,
+            mode='lines',
+            line_color='rgba(0,100,80,0)',
+            showlegend=False
+        ), row=1, col=1)
+        
+        fig.add_trace(go.Scatter(
+            x=prediction_df['date'],
+            y=prediction_df['lower_bound'],
+            fill='tonexty',
+            mode='lines',
+            line_color='rgba(0,100,80,0)',
+            name='95% Confidence',
+            fillcolor='rgba(255,255,0,0.2)'
+        ), row=1, col=1)
+    
+    # Volume
+    fig.add_trace(go.Bar(x=df.index, y=df['volume'], name='Volume', marker_color='blue'), row=2, col=1)
+    
+    # RSI
+    fig.add_trace(go.Scatter(x=df.index, y=df['RSI'], name='RSI', line=dict(color='purple')), row=3, col=1)
+    fig.add_hline(y=70, line_dash="dash", line_color="red", row=3, col=1)
+    fig.add_hline(y=30, line_dash="dash", line_color="green", row=3, col=1)
+    
+    # MACD
+    fig.add_trace(go.Scatter(x=df.index, y=df['MACD'], name='MACD', line=dict(color='blue')), row=4, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['MACD_signal'], name='Signal', line=dict(color='red')), row=4, col=1)
+    fig.add_trace(go.Bar(x=df.index, y=df['MACD_histogram'], name='Histogram', marker_color='gray'), row=4, col=1)
+    
+    fig.update_layout(
+        title="Advanced Crypto Analysis & Forecasting",
+        height=800,
+        showlegend=True,
+        xaxis_rangeslider_visible=False
+    )
+    
+    return fig
+
+def main():
+    # Header
+    st.markdown('<div class="main-header"><h1 style="color: white; text-align: center;">🚀 Advanced Crypto Analysis & 30-Day Forecasting</h1></div>', unsafe_allow_html=True)
+    
+    # Sidebar
+    st.sidebar.title("⚙️ Configuration")
+    
+    # Crypto selection
+    crypto_symbols = {
+        'Bitcoin': 'bitcoin',
+        'Ethereum': 'ethereum', 
+        'Sandbox': 'the-sandbox',
+        'Cardano': 'cardano',
+        'Polygon': 'matic-network',
+        'Chainlink': 'chainlink',
+        'Solana': 'solana'
+    }
+    
+    selected_crypto = st.sidebar.selectbox("Select Cryptocurrency", list(crypto_symbols.keys()))
+    symbol = crypto_symbols[selected_crypto]
+    
+    # Timeframe
+    timeframe = st.sidebar.selectbox("Timeframe", ['1d', '4h', '1w'])
+    
+    # Prediction settings
+    st.sidebar.subheader("🤖 Prediction Settings")
+    
+    # Filter available models based on installed packages
+    available_models = ['Linear Regression']
+    if TENSORFLOW_AVAILABLE:
+        available_models.append('LSTM')
+    if STATSMODELS_AVAILABLE:
+        available_models.append('ARIMA')
+    
+    model_type = st.sidebar.selectbox("AI Model", available_models)
+    prediction_target = st.sidebar.selectbox("Prediction Target", ['close', 'high', 'low'])
+    forecast_days = st.sidebar.slider("Forecast Days", 7, 30, 30)
+    
+    # Initialize analyzer
+    analyzer = CryptoAnalyzer()
+    
+    if st.sidebar.button("🔄 Analyze & Predict", type="primary"):
+        with st.spinner("Fetching data and generating analysis..."):
+            # Fetch data
+            df = analyzer.fetch_crypto_data(symbol, timeframe)
+            
+            if df is not None:
+                # Calculate indicators
+                df = analyzer.calculate_indicators(df)
+                
+                # Generate signals
+                signals_df = analyzer.generate_signals(df)
+                
+                # Generate predictions
+                prediction_df = analyzer.predict_prices(df, model_type, prediction_target, forecast_days)
+                
+                # Display metrics
+                col1, col2, col3, col4 = st.columns(4)
+                
+                current_price = df['close'].iloc[-1]
+                price_change = ((current_price - df['close'].iloc[-2]) / df['close'].iloc[-2]) * 100
+                
+                with col1:
+                    st.metric("Current Price", f"${current_price:.4f}", f"{price_change:.2f}%")
+                
+                with col2:
+                    st.metric("24h Volume", f"${df['volume'].iloc[-1]:,.0f}")
+                
+                with col3:
+                    rsi_value = df['RSI'].iloc[-1]
+                    rsi_status = "Overbought" if rsi_value > 70 else "Oversold" if rsi_value < 30 else "Neutral"
+                    st.metric("RSI", f"{rsi_value:.1f}", rsi_status)
+                
+                with col4:
+                    if prediction_df is not None:
+                        future_price = prediction_df['predicted_price'].iloc[-1]
+                        price_change_pred = ((future_price - current_price) / current_price) * 100
+                        st.metric(f"{forecast_days}d Prediction", f"${future_price:.4f}", f"{price_change_pred:.2f}%")
+                
+                # Display chart
+                fig = create_chart(df, signals_df, prediction_df)
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Prediction summary
+                if prediction_df is not None:
+                    st.markdown('<div class="prediction-card">', unsafe_allow_html=True)
+                    st.subheader("🔮 30-Day Forecast Summary")
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write(f"**Model Used:** {model_type}")
+                        st.write(f"**Target:** {prediction_target.title()} Price")
+                        st.write(f"**Current Price:** ${current_price:.4f}")
+                        st.write(f"**Predicted Price ({forecast_days} days):** ${prediction_df['predicted_price'].iloc[-1]:.4f}")
+                    
+                    with col2:
+                        trend = "📈 Bullish" if prediction_df['predicted_price'].iloc[-1] > current_price else "📉 Bearish"
+                        st.write(f"**Trend:** {trend}")
+                        st.write(f"**Price Range:** ${prediction_df['lower_bound'].iloc[-1]:.4f} - ${prediction_df['upper_bound'].iloc[-1]:.4f}")
+                        st.write(f"**Confidence:** 95%")
+                        
+                        # Calculate max gain/loss potential
+                        max_gain = ((prediction_df['upper_bound'].max() - current_price) / current_price) * 100
+                        max_loss = ((prediction_df['lower_bound'].min() - current_price) / current_price) * 100
+                        st.write(f"**Max Potential:** +{max_gain:.1f}% / {max_loss:.1f}%")
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Recent signals
+                if not signals_df.empty:
+                    st.subheader("📊 Recent Trading Signals")
+                    recent_signals = signals_df.tail(5)
+                    
+                    for _, signal in recent_signals.iterrows():
+                        signal_color = "🟢" if signal['signal'] == 'BUY' else "🔴"
+                        st.write(f"{signal_color} **{signal['signal']}** at ${signal['price']:.4f} - {signal['reason']} ({signal['timestamp'].strftime('%Y-%m-%d %H:%M')})")
+                
+                # Export options
+                st.subheader("📥 Export Data")
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    if prediction_df is not None:
+                        csv_data = prediction_df.to_csv(index=False)
+                        st.download_button(
+                            "Download Predictions CSV",
+                            csv_data,
+                            f"{selected_crypto}_predictions.csv",
+                            "text/csv"
+                        )
+                
+                with col2:
+                    if not signals_df.empty:
+                        signals_csv = signals_df.to_csv(index=False)
+                        st.download_button(
+                            "Download Signals CSV",
+                            signals_csv,
+                            f"{selected_crypto}_signals.csv",
+                            "text/csv"
+                        )
+    
+    # Footer
+    st.markdown("---")
+    st.markdown("💡 **Disclaimer:** This is for educational purposes only. Not financial advice. Always do your own research before making investment decisions.")
+
+if __name__ == "__main__":
+    main()
