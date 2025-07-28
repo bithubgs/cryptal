@@ -1,9 +1,9 @@
-streamlit
+streamlit>=1.33.0
 pandas
 numpy
 plotly
 requests
 ta
 scikit-learn
-tensorflow
-statsmodels
+tensorflow # ან tensorflow==<ვერსია, რომელიც თავსებადია 3.12-თან>
+statsmodels # ან statsmodels==<ვერსია, რომელიც თავსებადია 3.12-თან>
