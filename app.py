@@ -107,11 +107,7 @@ class CryptoAnalyzer:
                 
                 return df
             else:
-                # Added specific error message for invalid symbols
-                if response.status_code == 404:
-                    st.error(f"Error: Crypto symbol '{symbol}' not found on CoinGecko. Please check the ID.")
-                else:
-                    st.error("Error fetching data from CoinGecko API. Please try again later.")
+                st.error("Error fetching data from CoinGecko API")
                 return None
                 
         except Exception as e:
@@ -419,44 +415,59 @@ def main():
     # Sidebar
     st.sidebar.title("⚙️ Configuration")
     
-    # Crypto selection: Allow manual input
-    st.sidebar.markdown("### Choose or Enter Crypto Symbol")
-    
-    # Define common crypto symbols for dropdown, but primarily use for hints
-    common_crypto_symbols = {
-        'Bitcoin': 'bitcoin',
-        'Ethereum': 'ethereum',
-        'XRP': 'xrp',
-        'Cardano': 'cardano',
-        'Solana': 'solana',
-        'Dogecoin': 'dogecoin', # Added Dogecoin for example
-        'Shiba Inu': 'shiba-inu' # Added Shiba Inu for example
+# Crypto selection
+    crypto_symbols = {
+    'Bitcoin': 'bitcoin',
+    'Ethereum': 'ethereum',
+    'Tether': 'tether', # USDT
+    'BNB': 'binancecoin',
+    'Solana': 'solana',
+    'XRP': 'ripple',
+    'Dogecoin': 'dogecoin',
+    'Cardano': 'cardano',
+    'Shiba Inu': 'shiba-inu',
+    'Avalanche': 'avalanche-2',
+    'Polkadot': 'polkadot',
+    'Tron': 'tron',
+    'Polygon': 'matic-network', # MATIC
+    'Chainlink': 'chainlink', # LINK
+    'Litecoin': 'litecoin', # LTC
+    'Cosmos': 'cosmos', # ATOM
+    'Ethereum Classic': 'ethereum-classic', # ETC
+    'Monero': 'monero', # XMR
+    'NEAR Protocol': 'near', # NEAR
+    'Algorand': 'algorand', # ALGO
+    'Decentraland': 'decentraland', # MANA
+    'The Sandbox': 'the-sandbox', # SAND
+    'Axie Infinity': 'axie-infinity', # AXS
+    'ImmutableX': 'immutable-x', # IMX
+    'Render Token': 'render-token', # RNDR
+    'Pepe': 'pepe', # PEPE
+    'Floki': 'floki', # FLOKI
+    'Injective Protocol': 'injective-protocol', # INJ
+    'Sui': 'sui', # SUI
+    'Arbitrum': 'arbitrum', # ARB
+    'Optimism': 'optimism', # OP
+    'Aptos': 'aptos', # APT
+    'Hedera': 'hedera-hashgraph', # HBAR
+    'Filecoin': 'filecoin', # FIL
+    'The Graph': 'the-graph', # GRT
+    'Aave': 'aave', # AAVE
+    'Uniswap': 'uniswap', # UNI
+    'Maker': 'maker', # MKR
+    'Compound': 'compound-governance-token', # COMP
+    'Fantom': 'fantom', # FTM
+    'Cronos': 'cronos', # CRO
+    'VeChain': 'vechain', # VET
+    'EOS': 'eos', # EOS
+    'IOTA': 'iota', # IOTA
+    'Kusama': 'kusama', # KSM
+    'Conflux': 'conflux-token', # CFX
+    'Gala': 'gala' # GALA
     }
     
-    # Option to select from popular cryptocurrencies
-    selected_from_dropdown = st.sidebar.selectbox(
-        "Select from Popular Cryptocurrencies (Optional)", 
-        [""] + list(common_crypto_symbols.keys()), # Add empty string for no selection
-        index=0 # Default to empty
-    )
-    
-    # Text input for manual symbol entry
-    manual_symbol_input = st.sidebar.text_input(
-        "Or enter CoinGecko ID (e.g., bitcoin, ethereum)", 
-        value=common_crypto_symbols.get(selected_from_dropdown, ""), # Pre-fill if selected from dropdown
-        key="manual_symbol_input"
-    )
-    
-    # Determine the final symbol to use
-    if selected_from_dropdown and selected_from_dropdown != "":
-        symbol = common_crypto_symbols[selected_from_dropdown]
-    elif manual_symbol_input:
-        symbol = manual_symbol_input.lower() # CoinGecko IDs are typically lowercase
-    else:
-        st.warning("Please select a cryptocurrency or enter a CoinGecko ID to proceed.")
-        st.stop() # Stop execution if no symbol is provided
-    
-    st.sidebar.write(f"Analyzing: **{symbol}**")
+    selected_crypto = st.sidebar.selectbox("Select Cryptocurrency", list(crypto_symbols.keys()))
+    symbol = crypto_symbols[selected_crypto]
     
     # Timeframe
     timeframe = st.sidebar.selectbox("Timeframe", ['1d', '4h', '1w'])
@@ -483,7 +494,7 @@ def main():
             # Fetch data
             df = analyzer.fetch_crypto_data(symbol, timeframe)
             
-            if df is not None and not df.empty: # Check if DataFrame is not empty
+            if df is not None:
                 # Calculate indicators
                 df = analyzer.calculate_indicators(df)
                 
@@ -511,19 +522,17 @@ def main():
                     st.metric("RSI", f"{rsi_value:.1f}", rsi_status)
                 
                 with col4:
-                    if prediction_df is not None and not prediction_df.empty:
+                    if prediction_df is not None:
                         future_price = prediction_df['predicted_price'].iloc[-1]
                         price_change_pred = ((future_price - current_price) / current_price) * 100
                         st.metric(f"{forecast_days}d Prediction", f"${future_price:.4f}", f"{price_change_pred:.2f}%")
-                    else:
-                        st.write(f"No {forecast_days}-day prediction available.")
                 
                 # Display chart
                 fig = create_chart(df, signals_df, prediction_df)
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Prediction summary
-                if prediction_df is not None and not prediction_df.empty:
+                if prediction_df is not None:
                     st.markdown('<div class="prediction-card">', unsafe_allow_html=True)
                     st.subheader("🔮 30-Day Forecast Summary")
                     
@@ -561,12 +570,12 @@ def main():
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    if prediction_df is not None and not prediction_df.empty:
+                    if prediction_df is not None:
                         csv_data = prediction_df.to_csv(index=False)
                         st.download_button(
                             "Download Predictions CSV",
                             csv_data,
-                            f"{symbol}_predictions.csv",
+                            f"{selected_crypto}_predictions.csv",
                             "text/csv"
                         )
                 
@@ -576,11 +585,9 @@ def main():
                         st.download_button(
                             "Download Signals CSV",
                             signals_csv,
-                            f"{symbol}_signals.csv",
+                            f"{selected_crypto}_signals.csv",
                             "text/csv"
                         )
-            else:
-                st.error("Could not fetch data for the specified symbol. Please check the CoinGecko ID and try again.")
     
     # Footer
     st.markdown("---")
