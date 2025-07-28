@@ -417,10 +417,12 @@ def main():
     
     # Crypto selection
     crypto_symbols = {
-        'Bitcoin': 'bitcoin',
-        'Ethereum': 'ethereum', 
-        'Sandbox': 'the-sandbox',
-        'Cardano': 'cardano',
+        'BTC': 'bitcoin',
+        'ETH': 'ethereum', 
+        'XRP': 'xrp',
+        'SAND': 'the-sandbox',
+        'SKL': 'skale',
+        'ADA': 'cardano',
         'Polygon': 'matic-network',
         'Chainlink': 'chainlink',
         'Solana': 'solana'
